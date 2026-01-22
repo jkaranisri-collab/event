@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Smart Campus</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,Arial}
+body{
+  background:linear-gradient(135deg,#0a0f2c,#2b1055);
+  color:#fff;min-height:100vh
+}
+nav{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:18px 28px
+}
+.glow-btn{
+  padding:10px 26px;border:none;border-radius:26px;
+  background:linear-gradient(45deg,#4fc3f7,#7b2ff7);
+  color:#fff;cursor:pointer;
+  box-shadow:0 0 14px #4fc3f7;transition:.25s
+}
+.glow-btn:hover{
+  box-shadow:0 0 26px #4fc3f7,0 0 48px #7b2ff7;
+  transform:scale(1.05)
+}
+.section{display:none;padding:40px}
+.active{display:block}
+.card{
+  background:rgba(255,255,255,.15);
+  padding:20px;border-radius:14px;margin:14px 0;
+  backdrop-filter:blur(10px)
+}
+input,select,textarea{
+  width:100%;padding:10px;margin:8px 0;border-radius:6px;border:none
+}
+
+/* Chatbot */
+#chatbot{
+  position:fixed;right:18px;bottom:18px;width:260px;
+  background:#fff;color:#000;border-radius:14px;display:none
+}
+#chat-header{
+  background:#2b1055;color:#fff;padding:10px;
+  border-radius:14px 14px 0 0;cursor:pointer
+}
+#chat-body{height:130px;overflow-y:auto;padding:8px;font-size:14px}
+#chat-input{width:100%;padding:8px;border:none;border-top:1px solid #ddd}
+.right-fab{position:fixed;right:18px;bottom:18px}
+</style>
+</head>
+
+<body>
+
+<nav>
+  <h2>Smart Campus</h2>
+  <div>
+    <button class="glow-btn" onclick="show('home')">Home</button>
+    <button class="glow-btn" onclick="show('login')">Login</button>
+
+  </div>
+</nav>
+
+<!-- HOME -->
+<section id="home" class="section active">
+  <h1>Smart Campus Student Support Platform</h1>
+  <p>AI-powered student services & complaint tracking</p><br>
+  <button class="glow-btn" onclick="show('login')">Get Started</button>
+</section>
+
+<!-- LOGIN -->
+<section id="login" class="section">
+  <div class="card">
+    <h2>Select Login Type</h2><br>
+    <button class="glow-btn" onclick="showStudentLogin()">🎓 Student</button>
+    <button class="glow-btn" onclick="showAdminLogin()">🧑‍💼 Admin</button>
+
+    <div id="student-login" style="display:none;margin-top:15px">
+      <h3>Student Login</h3>
+      <input placeholder="Register Number">
+      <select>
+        <option>Select Department</option>
+        <option>CSE</option><option>ECE</option>
+        <option>EEE</option><option>Mechanical</option>
+      </select>
+      <button class="glow-btn" onclick="show('student')">Login</button>
+    </div>
+
+    <div id="admin-login" style="display:none;margin-top:15px">
+      <h3>Admin Login</h3>
+      <input placeholder="Email ID">
+      <input type="password" placeholder="Password">
+      <button class="glow-btn" onclick="show('admin')">Login</button>
+    </div>
+  </div>
+</section>
+
+<!-- STUDENT DASHBOARD -->
+<section id="student" class="section">
+  <h2>Student Dashboard</h2>
+
+  <div class="card">Total Complaints: <b id="stTotal">0</b></div>
+  <div class="card">Pending: <b id="stPending">0</b></div>
+  <div class="card">Resolved: <b id="stResolved">0</b></div>
+
+  <div class="card">
+    <h3>Raise Complaint / Request</h3>
+    <select id="reqType">
+      <option>Bonafide</option>
+      <option>Transfer Certificate</option>
+      <option>ID Card</option>
+      <option>Other Complaint</option>
+    </select>
+    <textarea id="reqMsg" placeholder="Enter your issue"></textarea>
+    <button class="glow-btn" onclick="submitComplaint()">Submit</button>
+  </div>
+
+  <div class="card">
+    <h3>Your Complaint Status</h3>
+    <ul id="studentList"></ul>
+  </div>
+</section>
+
+<!-- ADMIN PANEL -->
+<section id="admin" class="section">
+  <h2>Admin Panel</h2>
+  <div class="card">Total Complaints: <b id="adTotal">0</b></div>
+
+  <div class="card">
+    <h3>All Complaints</h3>
+    <ul id="adminList"></ul>
+  </div>
+</section>
+
+<!-- CHATBOT -->
+<div id="chatbot">
+  <div id="chat-header" onclick="toggleChat()">AI Help 🤖</div>
+  <div id="chat-body"></div>
+  <input id="chat-input" placeholder="Ask about fees / exam / timetable"
+         onkeydown="chat(event)">
+</div>
+<button class="glow-btn right-fab" onclick="toggleChat()">Chat</button>
+
+<script>
+/* Navigation */
+function show(id){
+  document.querySelectorAll('.section')
+  .forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* Login toggle */
+function showStudentLogin(){
+  document.getElementById("student-login").style.display="block";
+  document.getElementById("admin-login").style.display="none";
+}
+
+function showAdminLogin(){
+  document.getElementById("admin-login").style.display="block";
+  document.getElementById("student-login").style.display="none";
+}
+
+/* Complaint system */
+let complaints=[];
+
+function submitComplaint(){
+  let type = document.getElementById("reqType").value;
+  let msg  = document.getElementById("reqMsg").value.trim();
+  if(!msg){ alert("Enter complaint"); return; }
+
+  complaints.push({type, msg, status:"Pending"});
+  document.getElementById("reqMsg").value="";
+  renderStudent();
+  renderAdmin();
+}
+
+function renderStudent(){
+  let list = document.getElementById("studentList");
+  list.innerHTML="";
+  let p=0,r=0;
+
+  complaints.forEach(c=>{
+    if(c.status==="Pending") p++; else r++;
+    list.innerHTML += `<li>${c.type} - <b>${c.status}</b></li>`;
+  });
+
+  document.getElementById("stTotal").innerText = complaints.length;
+  document.getElementById("stPending").innerText = p;
+  document.getElementById("stResolved").innerText = r;
+}
+
+function renderAdmin(){
+  let list = document.getElementById("adminList");
+  list.innerHTML="";
+  document.getElementById("adTotal").innerText = complaints.length;
+
+  complaints.forEach((c,i)=>{
+    list.innerHTML += `
+      <li>
+        <b>${c.type}</b>: ${c.msg}<br>
+        <select onchange="updateStatus(${i},this.value)">
+          <option ${c.status=="Pending"?"selected":""}>Pending</option>
+          <option ${c.status=="Approved"?"selected":""}>Approved</option>
+          <option ${c.status=="Rejected"?"selected":""}>Rejected</option>
+        </select>
+      </li><br>`;
+  });
+}
+
+function updateStatus(i,v){
+  complaints[i].status=v;
+  renderStudent();
+  renderAdmin();
+}
+
+/* Chatbot */
+function toggleChat(){
+  let bot = document.getElementById("chatbot");
+  bot.style.display = bot.style.display==="block" ? "none" : "block";
+}
+
+function chat(e){
+  if(e.key==="Enter"){
+    let q = e.target.value.toLowerCase();
+    let a = "Please contact office.";
+
+    if(q.includes("fees")) a="Fees details available in accounts section.";
+    else if(q.includes("exam")) a="Exam timetable will be announced.";
+    else if(q.includes("timetable")) a="Timetable notice board-la iruku.";
+
+    let body = document.getElementById("chat-body");
+    body.innerHTML += `<p><b>You:</b> ${e.target.value}</p>
+                       <p><b>Bot:</b> ${a}</p>`;
+    e.target.value="";
+    body.scrollTop = body.scrollHeight;
+  }
+}
+</script>
+
+</body>
+</html>
